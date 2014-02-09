@@ -1,0 +1,326 @@
+\documentclass[12pt]{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{algpseudocode}
+
+\pagestyle{myheadings}
+\markright{CSE 202 Homework 1 \hfill Matthias Springer, A99500782\hfill}
+
+\begin{document}
+
+\section*{Problem 1}
+\paragraph{Notation}
+$a \leftrightarrow b$ means that $a$ is matched to $b$. $a <_{b} c$ means that $b$ likes $c$ more than $a$. Equality indicates a tie.
+
+\subsection*{Strong instability}
+Yes, there does always exist a perfect matching without a strong instability. 
+
+\paragraph{Intuition}
+We can resolve ties by ordering the persons involved arbitrarily. I.e. when $m_1$ and $m_2$ are tied for $w_1$, we can just assume that $w_1$ likes $m_1$ better than $m_2$. Since $m_1$ and $m_2$ were tied before, $w_1$ will never complain about our choice. The Gale-Shapley algorithm could then be run without modifications and is guaranteed to return a perfect stable matching.
+
+\paragraph{Proof}
+We show that the Gale-Shapley algorithm always generates a perfect matching without a strong instability, even if there may be ties. We will prove this by contradiction.
+
+We make a small modification to the algorithm: if there are multiple choices for a woman to propose to a man (because there are multiple men that she likes best), she randomly proposes to one.
+
+Also, note that men do not switch for a women that are tied with the current partner.
+
+\begin{itemize}
+	\item We assume, that the output of the algorithm contains a strong instability. I.e. $m_1 \leftrightarrow w_1$ and $w_2 \leftrightarrow w_2$, but $m_1 <_{w_1} m_2$ and $w_2 <_{m_2} w_1$.
+	\item Therefore, $w_1$ must have proposed to $m_2$ before she proposed to $m_1$\footnote{$m_1$ and $m_2$ are not tied (see assumption).}.
+	\item $m_1 \leftrightarrow w_1$, so one of the following must be true. \begin{itemize}
+		\item $m_2$ already had a better partner $w_i$. Eventually, $m_2$ switched for $w_1$. Therefore, $w_2 \geq_{m_2} w_i >_{m_2} \ldots >_{m_2} w_1$. This violates our assumption that $w_2 <_{m_2} w_1$.
+	\item $m_2$ accepts $w_1$, but eventually switches to $w_2$. Therefore, there must be women, including $w_2$, that $m_2$ likes better. Therefore, $w_2 \geq_{m_2} w_i >_{m_2} \ldots >_{m_2} w_1$. This violates our assumption that $w_2 <_{m_2} w_1$.
+	\item Note that $w_1$ and $w_2$ cannot be tied, since this would not impose a strong instability.
+	\end{itemize}
+	\item Our assumption is wrong. There can be no strong instability.
+\end{itemize}
+
+\subsection*{Weak instability}
+No, there is not always a perfect matching without a weak instability. We show this by providing an example in which all perfect matchings have a weak instability.
+
+$$ w_1 =_{m_1} w_2 $$
+$$ w_1 =_{m_2} w_2 $$
+$$ m_1 >_{w_1} m_2 $$
+$$ m_1 >_{w_2} m_2 $$
+
+We examine the two possible matchings.
+
+\begin{itemize}
+	\item $m_1 \leftrightarrow w_1$ and $m_2 \leftrightarrow w_2$ contains a weak instability: $w_2$ likes $m_1$ more than her current partner $m_2$ and $m_1$ does not care (both women are tied).
+	\item $m_1 \leftrightarrow w_2$ and $m_2 \leftrightarrow w_1$ contains a weak instability: $w_1$ likes $m_1$ more than her current partner $m_2$ and $m_1$ does not care (both women are tied).
+\end{itemize}
+
+Therefore, there does not always exist a perfect matching without a weak instability.
+
+\section*{Problem 2}
+For a woman, it is not possible to end up with a true better man by lying about her preferences.
+
+\begin{itemize}
+	\item Let $w$ be a woman with the true preference $m_1 >_w m_2$. Let us assume that the Gale-Shapley algorithm creates $m_{\mathit{truth}} \leftrightarrow w$ and that $w$ pretends that $m_2 >_w^{\mathit{lie}} m_1$. We compare the results of the algorithm with and without the lie. \\
+	\item \textbf{Case 1: $m_1 < m_{\mathit{truth}}$ and $m_2 < m_{\mathit{truth}}$} \\ 
+\emph{Original proposing sequence:} $(\ldots, m_{\mathit{truth}}, \ldots, m_1, \ldots, m_2, \ldots)$ \\
+\emph{New proposing sequence:} $(\ldots, m_{\mathit{truth}}, \ldots, m_2, \ldots, m_1, \ldots)$ \\
+Both $m_1$ and $m_2$ are actually and \emph{after lying} lower on $w$'s preference list than her matched partner $m_{\mathit{truth}}$. Therefore, $w$ is matched to $m_{\mathit{truth}}$ before and after the lie, because, in both cases, $w$ does not even propose to $m_1$ or $m_2$, since she was matched with a better partner before and he did not leave $w$\footnote{In general, the ordering of men on $w$'s preference list below $m_{\mathit{truth}}$ does not matter.}.
+	\item \textbf{Case 2: $m_1 > m_{\mathit{truth}}$ and $m_2 > m_{\mathit{truth}}$} \\ 
+\emph{Original proposing sequence:} $(\ldots, m_1, \ldots, m_2, \ldots, m_{\mathit{truth}}, \ldots)$ \\
+\emph{New proposing sequence:} $(\ldots, m_2, \ldots, m_1, \ldots, m_{\mathit{truth}}, \ldots)$ \\
+Both $m_1$ and $m_2$ are actually and \emph{after lying} higher on $w$'s preference list than her matched partner $m_{\mathit{truth}}$. Therefore, $w$ is matched to $m_{\mathit{truth}}$ before and after the lie, because, in both cases, $w$ proposes to $m_1$ and $m_2$ and both will either reject her or first accept her and leave her later. \begin{itemize}
+	\item At some point, $w$ proposes to $m_2$. We know that $w \leftrightarrow m_{\mathit{truth}}$ in the first run of the algorithm, although $w$ proposed to $m_2$ before. Therefore, $m_2$ either already had a better partner or he accepted $w$ and then switched to another woman. This will also happen after lying, since $w$'s lie does not affect the proposing sequence of the other women.
+	\item The same argument holds true for $m_1$.
+\end{itemize}
+	\item \textbf{Case 3: $m_1 > m_{\mathit{truth}}$ and $m_2 < m_{\mathit{truth}}$} \\ 
+\emph{Original proposing sequence:} $(\ldots, m_1, \ldots, m_{\mathit{truth}}, \ldots, m_2, \ldots)$ \\ 
+\emph{New proposing sequence:} $(\ldots, m_2, \ldots, m_{\mathit{truth}}, \ldots, m_1, \ldots)$ \\
+When $w$ lies, the following is true. \begin{itemize}
+	\item $w$ will not be matched with a man she proposed to before $m_2$, because these men eventually rejected her in the first run of the algorithm.
+	\item When $w$ proposes to $m_2$, he might accept her and stay with her. In that case, $w$ ends up with a worse partner than without lying.
+	\item In case $m_2$ rejects $w$ or leaves her later, $w$ will propose to all men until $m_{\mathit{truth}}$ will eventually accept her and stay with her. All the men in between will reject her or leave her, because that is what they did in the first run of the algorithm.
+\end{itemize}
+	\item \textbf{Case 4: $m_1 < m_{\mathit{truth}}$ and $m_2 > m_{\mathit{truth}}$} \\ Not possible, since $m_1 < m_{\mathit{truth}} < m_2$ violates our assumption that $m_1 > m_2$.
+	\item \textbf{Case 5: $m_2 = m_{\mathit{truth}}$ and $m_1 > m_{\mathit{truth}}$} \\ 
+\emph{Original proposing sequence:} $(\ldots, m_1, \ldots, m_{\mathit{truth}}, \ldots)$ \\
+\emph{New proposing sequence:} $(\ldots, m_{\mathit{truth}}, \ldots, m_1, \ldots)$ \\
+$w$ changes the ordering in such a way that she proposes to her matched partner earlier and to a better partner later. $m_{\mathit{truth}}$'s predecessors will (eventually) reject $w$, but $m_{\mathit{truth}}$ will accept $w$ and stay with her, since he did not get a better proposal in the first run.
+	\item \textbf{Case 6: $m_2 = m_{\mathit{truth}}$ and $m_1 < m_{\mathit{truth}}$} \\ Not possible, since $m_1 < m_2$ violates our assumption that $m_1 > m_2$.
+	\item \textbf{Case 7: $m_1 = m_{\mathit{truth}}$ and $m_2 < m_{\mathit{truth}}$} \\
+\emph{Original proposing sequence:} $(\ldots, m_{\mathit{truth}}, \ldots, m_2, \ldots)$ \\
+\emph{New proposing sequence:} $(\ldots, m_2, \ldots, m_{\mathit{truth}}, \ldots)$ \\
+All men before $m_2$ will reject $w$'s proposal or leave her later, since that is what they did in the first run. $w$ proposes to $m_2$ before she proposes to $m_{\mathit{truth}}$. $m_2$ might accept her proposal and stay with her. In that case, $w$ ended up with a worse partner. In case $m_2$ rejects her (eventually), $w$ will propose to all men between $m_2$ and $m_{\mathit{truth}}$. These men will reject her, because they did the same in the first run. $m_{\mathit{truth}}$ will accept $w$ and stay with her.
+	\item \textbf{Case 8: $m_1 = m_{\mathit{truth}}$ and $m_2 = m_{\mathit{truth}}$} \\ $w$ did not lie.
+\end{itemize}
+
+In every case, $w$ did either end up with the same partner again or get a worse partner. Therefore, $w$ cannot improve her matching by lying.
+
+\section*{Problem 3}
+
+\subsection*{Summary}
+The key idea is to calculate all values $F_j$ together instead of separately. When we take a look at the formula for $F_j$, we see that $C$ and $C_j$ are constants that are multiplied with the two sums. The difficult part is to calculate $\sum_{i<j} \frac{q_i}{(j-i)^2} - \sum_{i>j} \frac{q_i}{(j-i)^2}$ efficiently. We can generate two polynoms $Q(x)$ (for the $q_i$) and $M(x)$ (for the denomiators) of less than degree $2n$ such that their multiplication contains the values $F_j$. This can be done efficiently with the algorithm discussed in the lecture. Then we multiply every coefficient of the resulting polynom with the constants $C$ and $q_j$.
+
+\subsection*{Basic Idea}
+\begin{itemize}
+	\item Calculate all $F_j$ together instead of separately.
+%	\item Represent all $F_j$ as a discrete convolution $F[i] = \sum_{j}$ of $Q$ and $M$, where $Q[i] = q_i$ and $M[i]$ represents all terms $(j-i)^2$.
+	\item Generate polynoms  \begin{itemize}
+		\item $Q(x) = \sum_{i=1}^{n} q_i x^{n-i}$ 
+		\item $M(x) = \sum_{i=1}^{n-1} -\frac{x^{n-1+i}}{i^2} + \frac{x^{n-1-i}}{i^2}$
+	\end{itemize}
+	\item Calculate $F(x) = Q(x) \cdot M(x)$ using the algorithm discussed in the lecture. Degree of both polygons is less than $2n$. Runtime $\mathcal{O}(2n \log 2n)$.
+	\item Extract coefficients $F_j = f_j$ from $F(x)$ at positions $j = 2n-1-i$ for $i=1 \ldots n$.
+\end{itemize}
+
+\subsection*{Full Algorithm}
+We can rewrite $F_j$ as follows.
+
+$$ F_j = C \cdot q_j \cdot \left( \sum_{i<j} \frac{q_i}{(j-i)^2} - \sum_{i > j} \frac{q_i}{(j - i)^2} \right) $$
+
+Now, we geneate the polynoms $Q(x)$ and $M(x)$ as presented in the previous section. For instance, for $n=4$, we generate the following polynoms.
+
+$$ Q(x) = q_1 x^3 + q_2 x^2 + q_3 x + q_4 $$
+
+$$ M(x) = -\frac{1}{9} x^6 - \frac{1}{4} x^5 - x^4 + x^2 + \frac{1}{4} x + \frac{1}{9} $$
+
+We use the method discussed in the lecture to multiply these two polynoms. For polynoms of degree $m$ this takes $\mathcal{O}(m \log m)$ time. $\deg(Q(x)) = n-1$ and $\deg(M(x)) = 2 \cdot (n - 1) < 2n$. Therefore, the multiplication takes $\mathcal{O}(2n \log 2n)$ time.
+
+\emph{Note:} the algorithm for multiplying two polynomials was designed for polynoms whose degree is a power of 2. Therefore, we might have to extend the polynoms, resulting in a polynom of degree $2n$. Therefore, the multiplication takes $\mathcal{O}(4n \log 4n) = \mathcal{O}(n \log n)$ time.
+
+For the multiplication, we assume that $Q(x)$ has the same degree as $M(x)$ by adding the missing powers of $x$ with a coefficient of zero (e.g. $0 x^6$ in the example). We also add missing powers of $x$ inside $M(x)$ (e.g. $0 x^3$ in the example).
+
+$$ M(x) \cdot Q(x) = \ldots + x^6 (-q_2 - \frac{q_3}{4} - \frac{q_4}{9}) + x^5 (q_1 - q_3 - \frac{q_4}{4}) + $$ $$ x^4 (\frac{q_1}{4} + q_2 - q_4) + x^3 (\frac{q_1}{9} + \frac{q_2}{4} + q_3) + \ldots $$
+
+The example above shows only the coefficients of $x^k$ with $k = 3 \ldots 6$. In general, we are interested only in the coefficients of $x^k$ with $k=2n-1-i$ and $i = 1 \ldots n$. The other coefficients are calcuated by the algorithm, but we do not need them.
+
+We can now generate the term $F_j = C \cdot q_j \cdot c_{2n - 1 - j}$, where $c_i$ is the coefficient of $x^i$ in $M(x) \cdot Q(x)$. This requires $\mathcal{O}(n)$ multiplications in total.
+
+\subsection*{Pseudo Code}
+\begin{algorithmic}
+	\State $n \gets Q.\mathit{size}()$
+	\State $M \gets \mbox{Array}[2n-1]$
+	\State $\mathit{result} \gets \mbox{Array}[n]$
+	
+	\For{$i = 1 \mbox{ to } n$}
+		\State $M[n-1+i] \gets i^2$
+		\State $M[n-1-i] \gets -i^2$
+	\EndFor
+
+	\State $d \gets 2^{\lceil \log_2 \deg M \rceil}$
+	\State $Q \gets Q \mbox{ with $d$ coefficients (fill with zeros)}$
+	\State $M \gets M \mbox{ with $d$ coefficients (fill with zeros)}$
+
+	\State $p \gets \mathit{mult}(M, Q)$
+	
+	\For{$i = 1 \mbox{ to } n$}
+		\State $\mathit{result}[i-1] = p[2n - 1 - i]$
+	\EndFor
+
+	\Return $\mathit{result}$
+\end{algorithmic}
+
+\subsection*{Runtime complexity}
+\begin{itemize}
+	\item Generate polynom $Q(x)$: $\mathcal{O}(n)$
+	\item Generate polynom $M(x)$: $\mathcal{O}(2n)$
+	\item Convert polynoms $Q(x)$ and $M(x)$ to polynom with same number of coefficients, where the number of coefficients is a power of 2: $\mathcal{O}(4n)$ each (next power of 2 might be almost $2n$)
+	\item Multiply polynoms (using FFT): $\mathcal{O}(4n \log 4n)$
+	\item Extract coefficients from resulting polynom: $\mathcal{O}(n)$
+\end{itemize}
+
+Therefore, the runtime complexity is $\mathcal{O}(4n \log 4n) = \mathcal{O}(n \log n)$.
+
+%\subsection*{Multiplying two polynoms}
+%This section describes, how the function $\mathit{mult}$ multiplies $Q(x)$ and $M(x)$ in runtime $\mathcal{O}(n \log n)$, where $n$ is the degree of the polygons and a power of 2.
+
+%The idea is to evaluate $Q(x)$ and $M(x)$ at $2n$ distinct points $x_i$ and multiplying the results $Q(x_i)M(x_i)$. We can then reconstruct the the resulting polynom $Q(x)M(x)$ (of degree $2n$) from the $2n$ points.
+
+%\paragraph{Evaluate polynom $A(x)$ at $n$ different points}
+%We divide the polynom into even and odd powers of $x$, resulting in $A(x) = A_{\mathit{even}}(x) + x \cdot A_{\mathit{odd}}(x)$.
+
+%Next, we evaluate the $A(x)$ at $\omega^{k}$ and $\omega^{\frac{n}{2} + k}$, where $\omega = e^{\frac{2 \pi i}{n}}$ and $k=1..n-1$. It is sufficient to do the calculation at $\omega^{k}$, since $A(\omega^{\frac{n}{2}+k}) = A_{\mathit{even}}(\omega^k) - \omega^k \cdot A_{\mathit{odd}}(\omega^k)$. The reason is true because $\omega^k = -\omega^{\frac{n}{2} + k}$ and all powers of $x$ in $A_{\mathit{even}}$ and in $A_{\mathit{odd}}$ are even numbers. Therefore, the minus sign vanishes.
+
+\section*{Problem 4}
+\subsection*{Basic Idea}
+\begin{itemize}
+	\item Given an arbitrary starting vertex, a local minimum is the end of a decreasing path, i.e. every next vertex is smaller than the current vertex.
+	\item Find the smallest vertex $v$ in the middle column.
+	\item Check if this smallest vertex is a local minimum. If not, there must be a local minimum on that side of the column  where $v$'s (left/right) neighbor is smaller than $v$ (could be both sides). A smallest path starting from $v$'s neighbor will never cross this column.
+	\item Find the smallest vertex $w$ in the middle row of the side that we chose in the last step.
+	\item Check if $w$ is a local minimum. If not, there must be a local minimum inside the quarter sector containing $v$'s chosen neighbor if $w > v$. Otherwise, there must be a local minimum in the quarter sector where $w$'s (upper/lower) neighbor is smaller than $w$.
+	\item We continue recursively on a smaller grid.
+\end{itemize}
+
+\subsection*{Full Algorithm}
+\begin{enumerate}
+	\item Find cell $\left( \lceil \frac{n}{2} \rceil, i \right)$, $1 \leq i \leq n$ that has a minimal value $x_{\lceil \frac{n}{2} \rceil, i}$.
+	\item Check $\left( \lceil \frac{n}{2} \rceil, i \right)$'s neighbors. If they are both greater than $x_{\lceil \frac{n}{2} \rceil, i}$, we return the local minimum.
+	\item Otherwise, there must be a local minimum on the side that contains the neighbor vertex $P$ that has a smaller value than $x_{\lceil \frac{n}{2} \rceil, i}$. If both neighbors have a smaller value, then both sides contain a local minimum and we may choose $P$ arbitrarily. \\
+\emph{Proof:} Starting with a vertex of value $x_i$, we can find a local minimum by choosing a neighbor that has a smaller value $x_j < x_i$. We must eventually reach a local minimum, because all values $x_k$ are distinct. Therefore, there must always be a smaller neighbor or, in case we reached the local minimum, all neighbors are greater. The path we consider right now starts at $P$ with a value that is smaller than $x_{\lceil \frac{n}{2} \rceil, i}$. This $x_P$ is smaller than the smallest number of the column. We can be sure that this (decreassing-value) path will never cross this column again. Otherwise, the path would hit a greater value, since all vertices on the column have a greater number than $x_P$.
+	\item Find cell $\left( j, \lceil \frac{n}{2} \rceil \right)$, with $1 \leq j \leq \lceil \frac{n}{2} \rceil - 1$ if we just chose the left side, or otherwise $\lceil \frac{n}{2} \rceil + 1 \leq j \leq n$ (if we chose the right side), such that $x_{j, \lceil \frac{n}{2} \rceil}$ is minimal.
+	\item Check $\left( j, \lceil \frac{n}{2} \rceil \right)$'s neighbors. If they are both greater than $x_{j, \lceil \frac{n}{2} \rceil}$, we return the local minimum.
+	\item We compare $x_{\lceil \frac{n}{2} \rceil, i}$ and $x_{j, \lceil \frac{n}{2} \rceil}$. \begin{enumerate}
+		\item If $x_{\lceil \frac{n}{2} \rceil, i} < x_{j, \lceil \frac{n}{2} \rceil}$, then the path starting at $P$ will not cross the row, because all vertices on the row have a greater value than the $x_{P}$. Therefore, we know that there must be a local minimum in the (square) sector that contains $P$. We continue the algorithm in that sector recursively. The new sector's size is equal to or smaller than $\lceil \frac{n}{2} \rceil \times \lceil \frac{n}{2} \rceil$.
+	\item If $x_{\lceil \frac{n}{2} \rceil, i} > x_{j, \lceil \frac{n}{2} \rceil}$, then we take one of $\left( j, \lceil \frac{n}{2} \rceil \right)$'s neighbors whose value is smaller than $x_{j, \lceil \frac{n}{2} \rceil}$ and call it $Q$\footnote{There must always exist such a vertex. Otherwise we would already have returned the local minimum.}. We know that the path starting from $Q$ will cross neither the half-row nor the column (same reason as in the proof above). Therefore, we know that there must be a local minimum in the (square) sector that contains $Q$. We continue the algorithm in that sector recursively. The new sector's size is equal to or smaller than $\lceil \frac{n}{2} \rceil \times \lceil \frac{n}{2} \rceil$.
+	\end{enumerate}
+\end{enumerate}
+\begin{itemize}
+	\item $n = 1$ is the base case for the recursion. In that case, the grid consists of only one cell that must be a local minimum.
+\end{itemize}
+
+\subsection*{Pseudo Code}
+This is the pseudo code for $\mathit{findMin(G, n)}$, where $G$ is the grid graph and $n$ is its size in one dimension.
+
+\begin{algorithmic}
+	\If{$n = 1$}
+		\Comment base case
+		\State $\mbox{output}(1, 1)$
+		\Comment keep track of acutal indices, see comment below
+	\EndIf
+
+	\State $c_x \gets \lceil \frac{n}{2} \rceil$
+	\State $c_v \gets \infty$
+
+	\For{i = 1 \mbox{ to } n}
+		\State $x \gets G[c_x, i]$
+		\If{$x < c_v$}
+			\Comment step 1
+			\State $c_v \gets x$
+			\State $c_y \gets i$
+		\EndIf
+	\EndFor
+
+	\State $n_l \gets G[c_x - 1, c_y]$
+	\State $n_r \gets G[c_y + 1, c_y]$
+
+	\If{$n_l > x \wedge n_r > x$}
+		\Comment step 2
+		\State $\mbox{output}(c_x, c_y)$
+		\Comment keep track of actual indices
+	\Else
+		\State $\mathit{direction}_x \gets -1 \mbox{\textbf{ if }} n_l < x \mbox{\textbf{ else }} 1$
+	\EndIf
+
+	\State $r_y \gets \lceil \frac{n}{2} \rceil$
+	\State $r_v \gets \infty$
+
+	\For{$i = \lceil \frac{n}{2} \rceil + \mathit{direction}_x; i > 0 \wedge i < n + 1; i \gets i + \mathit{direction}_x$}
+		\State $x \gets G[i, r_y]$
+		\If{$x < r_v$}
+			\Comment step 4
+			\State $r_v \gets x$
+			\State $r_x \gets i$
+		\EndIf
+	\EndFor
+
+	\State $n_u \gets G[r_x, r_y - 1]$
+	\State $n_d \gets G[r_x, r_y + 1]$
+
+	\State $c_{\mathit{end}} \gets 1 \mbox{\textbf{ if }} n_l < x \mbox{\textbf{ else }} n$
+
+	\If{$n_u > x \wedge n_d > x}$
+		\Comment step5
+		\State $\mbox{output}(r_x, r_y)$
+		\Comment keep track of actual indices
+	\ElsIf{$c_v < r_v$}
+		\Comment step 6a
+		\State $r_{\mathit{end}} \gets 1 \mbox{\textbf{ if }} c_y < \lceil \frac{n}{2} \rceil \mbox{\textbf{ else }} n$
+
+	\Else
+		\Comment step 6b
+  	\State $r_{\mathit{end}} \gets 1 \mbox{\textbf{ if }} n_d < x \mbox{\textbf{ else }} n$
+
+	\EndIf
+
+	\Return $\mbox{findMin}(G[\lceil \frac{n}{2} \rceil : c_{\mathit{end}}, \lceil \frac{n}{2} \rceil : r_{\mathit{end}}], \lceil \frac{n}{2} \rceil)$
+\end{algorithmic}
+
+In the pseudo code, $G[a : b, c : d]$ means that we copy the array rectangle horizontally from index $a$ to $b$ and vertically from $c$ to $d$. The resulting  array begins at index $1$. In the actual implementation of the algorithm, we would not do this because it is too expensive. We can just provide the coordinates of the new array segment that we are working on. The only reason for choosing this way in the pseudo code is to keep it readable and understandable. In the runtime complexity analysis, I will not account for copying the array.
+
+It is also important to remember, that the output of the indices of the pseduo code algorithm does not keep track of the actual indices. I.e. every recursive call of the algorithm gets an array whose first element is at position $(1,1)$, although the real position of this first element might be something else (because it was copied in the example in order to keep the pesudo code free of index number crunching).
+
+All out-of-bounds accesses will return $\infty$. I.e. $G[0,2] = G[n+1, 1] = \infty$.
+
+\subsection*{Runtime complexity}
+\begin{itemize}
+	\item We assume that the grid $G$ is a square grid with a height and length of $n$.
+	\item Finding the minimum of $G$'s middle column: $n$ probes.
+	\item Checking if the column's minimum is a local minimum: $2$ probes.
+	\item Finding the minimum of the middle column: $\lceil \frac{n}{2} \rceil - 1 = \mathcal{O}(n)$ probes\footnote{Remember that we already split the grid vertically at this point}.
+	\item Checking if the row's minimum is a local minimum: $2$ probes.
+	\item We need $\mathcal{O}(n)$ probes per recursion/conquer step. Every divide step divides $n$ by half\footnote{If the $n$ is odd, we take $\lceil \frac{n}{2} \rceil$. This does not affect the runtime complexity asymptotically.}. Therefore this is the runtime complexity for the algorithm: $T(n) = T(\frac{n}{2}) + \mathcal{O}(n)$. The base case takes a constant amount of time ($T(1) = c$) We can show that $T(n) = \mathcal{O}(c \cdot n)$ by using the recursion tree method. Every level contains exactly one problem and the problem size is cut in half on every next level. Therefore, the problem complexity can be described by the decreasing geometric series: $T(n) = \sum_{i=1}^{\log n} \frac{c \cdot n}{2^i} \leq c_2 \cdot n$.\footnote{We can assume that it is an infinite decreasing geometric series.}
+\end{itemize}
+Therefore, the runtime complexity of the algorithm is $\mathcal{O}(n)$.
+
+\section*{Problem 5}
+
+\subsection*{Basic Idea}
+\begin{itemize}
+	\item We sort all lines by their slopes.
+	\item We use divide-and-conquer and generate two equal-sized subproblems by splitting the lines in the middle. Note, that the sorting is preserved.
+	\item The algorithm is supposed to return the envelope that contains the visible lines only.
+	\item In the conquer step, we take two envelopes and combine them. Therefore, we find the single intersection point of the envelopes and from there on, we take the line segments that are on top. Before, we take the line segments from the other envelope. The intersection point can be found in linear time with a scan line algorithm that begins at $-\infty$ and stops at the beginning of every new line segment in either one of the two envelopes.
+\end{itemize}
+
+\subsection*{Full Algorithm}
+\begin{itemize}
+	\item The algorithm gets an array of line equations as input, and the line equations must already be sorted by their slope value. If that is not the case, this can be done in a preprocessing step in $\mathcal{O}(n \log n)$ if $n$ is the number of line equations.
+	\item The algorithm returns a list of visible line equations and their intersection points. Together, these form line segments, where each line equation is only used between the two intersection points with the predecessor and the successor line equation. Note, that the left-most and the right-most lines have only one intersection and go to $-\infty$ and $\infty$ respectively.
+	\item We divide the list of equations in the middle and work on both list recursively (divide and conquer).
+	\item The conquer step works as follows. \begin{itemize}
+		\item We need to merge the two sequences of line segments (also called \emph{envelopes}) by finding their intersection point and creating one single list of line segments. During this step, some of the lines might become invisible and are therefore discarded. This can be done in $\mathcal{O}(n)$.
+		\item Let $A$ be the line segments from the first recursive divide call and $B$ be the line segments from the second recursive divide call.
+		\item At some point, a segment from $A$ might intersect with a segment from $B$. At that point, we combine $A$ and $B$ by saving the intersection point and taking all previous line segments from $A$ and taking all following line segments from $B$, if $A$ was on top before and $B$ is on top later\footnote{Otherwise, we take all previous line segments from $B$, add the intersection point, and take all following line segments from $A$.}.
+		\item Note, that there can only be one single intersection of $A$ and $B$, because $A$ and $B$ are sorted by their slopes and all slopes in $A$ are lower  than all slopes in $B$. If there were a second intersection point, the two envelopes had to intersect a second time. Therefore, $A$'s or $B$'s slopes would have to decrease again or $A$'s slopes would have to become greater than a slope in $B$. This contradicts the fact, that $A$ and $B$ are sorted.
+	\item We can merge both envelopes in linear time by using a scan line algorithm. We start at $x=-\infty$ and determine the value of the first line equation in both envelopes\footnote{Note, that the first equation does not have an intersection point to its left.}. By doing this, we know which of the two envelopes is on top. Then we move to the next closest intersection point (on the x-axis) in the two envelopes\footnote{Both envelopes have different intersection points and we do not care where the intersection point comes from.}. Note, that the slope of an envelope can only change at these intersection points. We evaluate the other envelope at this intersection point\footnote{We know the segments of the other envelope and where they begin and end.}. If from now on, the other line segments/the other envelope are on top (e.g. before, $A$ was on top, but now $B$ is on top)\footnote{We have to evaluate both envelopes.}, then $A$ and $B$ intersect and we combine them as described before. We return the combined envelopes.
+	\end{itemize} 
+\end{itemize}
+
+\subsection*{Runtime Complexity}
+\begin{itemize}
+	\item Sorting by slopes: $\mathcal{O}(n \log n)$
+	\item Scan line algorithm for combining two envelopes (conquer step): $\mathcal{O}(n)$
+	\item Full recursion with divide and conquer: $T(n) = 2 \cdot T(\frac{n}{2}) + \mathcal{O}(n)$ and the base cases $T(1) = T(2) = \mbox{const}$. We know that $T(n) = \mathcal{O}(n \log n)$.
+\end{itemize}
+
+Therefore, the overall runtime complexity is $\mathcal{O}(n \log n)$.
+\end{document}
+

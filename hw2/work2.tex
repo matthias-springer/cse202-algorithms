@@ -1,0 +1,460 @@
+\documentclass[12pt]{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{algpseudocode}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+\pagestyle{myheadings}
+\markright{CSE 202 Homework 2 \hfill Matthias Springer, A99500782\hfill}
+
+\begin{document}
+
+\section*{Problem 1}
+
+\subsection*{Subproblem a}
+Let us consider that there is a negative cycle $C$. Every edge has a weight of $w_{i, j} = r \cdot c_{i,j} - p_j$.
+
+$$ \Rightarrow \sum_{(i, j) \in C} r \cdot c_{i, j} - p_j < 0 $$
+
+$$ \Rightarrow r \cdot \sum_{(i, j) \in C} c_{i, j} - \sum_{(i, j) \in C} p_j < 0 $$
+
+$$ \Rightarrow r \cdot \sum_{(i, j) \in C} c_{i, j} < \sum_{(i, j) \in C} p_j $$
+
+$$ \Rightarrow r < \frac{\sum_{(i, j) \in C} p_j}{\sum_{(i, j) \in C} c_{i, j}} $$
+
+$$ \Rightarrow \mbox{ found a cycle with a bigger ratio than $r$} $$
+
+$$ \Rightarrow r^* > r $$
+
+\subsection*{Subproblem b}
+Let us consider that there is no negative cycle, i.e. all cycles are positive.
+
+$$ \Rightarrow \forall C \in \mbox{ cycles}: \sum_{(i, j) \in C} r \cdot c_{i, j} - p_j > 0 $$
+
+$$ \Rightarrow \forall C \in \mbox{ cycles}: r > \frac{\sum_{(i, j) \in C} p_j}{\sum_{(i, j) \in C} c_{i, j}} $$
+
+$$ \Rightarrow \max_{C \in \mbox{ cycles}} \frac{\sum_{(i, j) \in C} p_j}{\sum_{(i, j) \in C} c_(i, j)} < r $$
+
+$$ \Rightarrow \mbox{ even the greatest (value) cycle is smaller than $r$} $$
+
+$$ \Rightarrow r^* < r $$
+
+\subsection*{Subproblem c}
+\subsubsection*{Basic Idea}
+\begin{itemize}
+	\item Find $r^*$ with an accuracy of $\epsilon$ by doing binary search. Let $r$ be the current guess.
+	\item $R = \max_{(i, j) \in E} \frac{p_j}{c_{i,j}}$ is an upper bound for $r^*$, because using an additional edge can only make the ration bigger.
+	\item Generate the weights for the graph with $r$.
+	\item Run Bellman Ford to determine if there is a cycle with negative weight.
+		\begin{itemize}
+			\item Run Bellman Ford.
+			\item If the shortest path to any vertex can be further reduced by taking an arbitrary edge, then the graph contains a negative cycle.
+			\item After running the outer loop $n$ times, we know the minimal path length for every vertex.
+			\item After running the outer loop $n$ more times, we can be sure that, for every vertex in a negative cycle, its predecessor points to the predecessor of the the vertex in the negative cycle.
+			\item Extract the negative cycle by following the predecessor pointer starting from the vertex the was most recently decreased.
+		\end{itemize}
+	\item If a negative cycle is found, try a bigger value in the binary search, otherwise a smaller value.
+	\item Runtime: $\mathcal{O}(\log{\frac{R}{\epsilon}})$ times runtime of Bellman Ford.
+	\item By running Bellman Ford for every SCC, we can deal with non-connected graphs.
+\end{itemize}
+
+\subsubsection*{Pesudocode: General Algorithm}
+The input for the algorithm is a directed graph $G$. The values $c_{i,j}$ and $p_j$ are considered part of the graph description $G$. The output is a cycle, i.e. a list of vertices.
+
+\begin{algorithmic}
+	\State $r \gets R$
+	\State $\mathit{left} \gets 0$
+	\State $C \gets \emptyset$
+
+	\While{$r - \mathit{left} \leq \epsilon$}
+		\State $C \gets \mathit{NegativeCycle}(G, r)$
+
+		\If{$C = \emptyset$}
+			% There is no negative cycle, take a look at left side
+			\State $r \gets \frac{\mathit{left} + r}{2}$
+		\Else
+			\State $\mathit{left} = \frac{\mathit{left} + r}{2}$
+		\EndIf
+	\EndWhile
+
+	\If{$C = \emptyset$}
+		\State $r \gets \max\{ 0, r-\epsilon \}$
+		\If{$r = 0$}
+
+			\Return $\mathit{FindCycle}(G)$
+		\Else
+
+			\Return $\mathit{NegativeCycle}(G, r)$
+		\EndIf
+	\EndIf
+\end{algorithmic}
+
+\subsection*{Pseudocode: Finding Negative Cycle}
+The basic idea of of the Bellman Ford algorithm was taken from Wikipedia. $n$ is the number of vertices inside the current SCC. The input for the algorithm ($\mathit{NegativeCycle}$) is a directed graph $G$ and a value $r$.
+
+\begin{algorithmic}
+	\ForAll{$(V, E) \in \mathit{SCC}(G)$}
+	\State $d[v] \gets \infty \mbox{      } \forall v \in V$
+	\State $d[v_1] \gets 0$
+	\State $\mathit{foundNegCycle} \gets \mathit{false}$
+	\For{$k \gets 1 \mbox{ \textbf{to} } 2n$}
+		\ForAll{$(i, j) \in E$}
+			\State $w_{i,j} \gets r c_{i,j} - p_j$
+			\If{$d[i] + w_{i,j} < d[j]$}
+				\State $d[j] \gets d[i] + w_{i,j}$
+				\State $\mathit{pre}[j] = i$
+				\State $\mathit{lastDecrease} \gets j$
+
+				\If{$k > n$}
+					\State $\mathit{foundNegCycle} \gets \mathit{true}$
+				\EndIf
+			\EndIf
+		\EndFor
+	\EndFor
+
+	\If{$\mathit{foundNegCycle}$}
+	\State $v \gets \mathit{pre}[\mathit{lastDecrease}]$
+	\State $L \gets \mbox{ new List}$
+	\State $L.\mathit{add}(lastDecrease)$
+	\While{$v \not= \mathit{lastDecrease}$}
+		\State $L.\mathit{add}(v)$
+		\State $v \gets \mathit{pre}[v]$
+	\EndWhile
+
+	\Return $L$
+	\EndIf
+	\EndFor
+
+	\Return $\emptyset$
+\end{algorithmic}
+
+\subsection*{Proof}
+\paragraph{General Algorithm}
+We use binary search in order to find an approximation of $r^*$. We know that $R = \max_{(i,j) \in C} \frac{p_j}{c_{i,j}}$ is an upper bound for $r^*$, because $R$'s ratio is the maximum ratio among all edges. When we form a cycle by adding other edges to $R$'s edge, this ratio cannot become bigger, since we only add edges whose ratio is equal or smaller. When we add an edge with a lower ratio, the overall ratio of the set of edges will become smaller.
+
+The binary search ensures that we always take a look at smaller values of $r$ if we did not find a negative cycle and bigger values of $r$ otherwise. In subsections a and b, we showed that this is the correct way to get closer to $r^*$.
+
+We can end the binary search, when the difference of the previous value of $r - \mathit{left} \leq \epsilon$. In this case, $r^*$ is contained within an interval of size less than $\epsilon$. If $C \not= \emptyset$, we found a negative cycle, therefore $r(C) < r^*$ (proof: subsection a) and $r^* - r(C) \leq \epsilon$. Therefore, $r(C) \geq r^* - \epsilon$.
+
+In case $C = \emptyset$, we did not find a negative circle. Therefore, for every circle $C$, $r > r^*$, but $r - r^* \leq \epsilon$. Therefore, $r - \epsilon$ is a valid approximation of $r^*$, because $r^* - (r - \epsilon) \leq \epsilon$. In case, $r - \epsilon < 0$, $r=0$ is a valid approximation. In that case, all profits are zero, $r^*=0$, and every circle $C$ is a valid result. In this case, we just have to find a circle in a directed graph.
+
+\paragraph{Find Negative Cycle}
+The starting vertex for the algorithm can be chosen arbitrarily, since we are not really interested in the real distance values of the vertices. We just want to find negative cycles. In case the graph is not connected, we have to run the algorithm for every strongly connected component (SCC). We can find SCCs using Tarjan's algorithm efficiently (see Wikipedia for description of the algorithm and its runtime). For every SCC, we can choose the starting point arbitrarily from the set of vertices of the SCC. By searching for a negative cycle in every SCC, we can be sure to find a negative cycle in the whole graph if one exists.
+
+The first $n$ runs of the outer loop (variable $k$), correspond to the standard Bellman Ford algorithm. We know that after that, each vertex's distance value is equal to the vertex's real distance from the starting point or maybe even smaller (in case there is a negative cycle). If there is a negative cycle in the current SCC, in every subsequent run of the outer loop, a distance value of a vertex inside a negative cycle is decreased. If we do not decrease a vertex distance value after the first $n$ runs, we can be sure that there is not negative cycle. Otherwise, we would be able to decrease the distance values of the vertices inside the cycle by looping inside the cycle multiple times.
+
+By running the loop $n$ more times, we can be sure that we keep decreasing the distances values of vertices of negative cycles. After $n$ runs, we can be sure that we decreased the distance value of every vertex inside every negative cycle. This is true, because we can always find a shorter path for a vertex $v_i$ inside a negative cycle, if $v_i$'s predecessors distance value was decreased. Therefore, the predecessor pointer of every vertex inside a negative cycle points to the actual predecessor in the negative cycle. In the worst case, the whole SCC is one big negative cycle. After $n$ runs, all vertices were updated, because $n$ is the number of vertices and in every run of the loop we updated at least one vertex inside a negative cycle.
+
+\subsection*{Runtime}
+\begin{itemize}
+	\item Steps of the binary search starting from $R$ with an accuracy of $\epsilon$: $\mathcal{O}(\log R - \log \epsilon) = \mathcal{O}(\log \frac{R}{\epsilon})$
+	\item Finding all SCCs with Tarjan's algorithm: $\mathcal{O}(|V| + |E|)$. $|V|^2$ is an upper bound for $|E|$.
+	\item Finding a negative cycle inside an SCC with the modified Bellman Ford algorithm: the outer loop runs $2|V|$ times, and the inner loop iterates over all edges. In addition, we have to reconstruct the loop by taking a look at the predecessors of the vertex that was decreased for the last time. This can be no more than $|V|$ vertices. $|V|^2$ is an upper bound for $|E|$ (in case there is an edge between every pair of vertices). $\mathcal{O}(2|V| |E| + |V|) = \mathcal{O}(|V| |E|) = \mathcal{O}(|V|^3)$.
+	\item The total runtime is $\mathcal{O}(\log \frac{R}{\epsilon} \cdot |V|^2 \cdot |V|^3) = \mathcal{O}(\log \frac{R}{\epsilon} |V|^5$.
+\end{itemize}
+
+\section*{Problem 3}
+\subsection*{Basic Idea}
+\begin{itemize}
+	\item For a tree to have zero skew, its two subtrees must both have zero skew.
+	\item The algorithm works bottom up: for every tree, run the algorithm recursively on its two subtrees. On the lowest level, a node has leaves $a$ and $b$. Increase $\argmin_{i \in \{a,b\}} l_i$, such that $l_a = l_b$.
+	\item If the two subtrees $A$ and $B$ with the edges $e(A)$ and $e(B)$ pointing to them have zero skew, increase $\argmin_{i \in \{A, B\}} h(i) + l_{e(i)}$, where $h(T)$ is the length of the root-to-tree path of tree $T$.
+	\item In both cases, increase the edge by the absolute difference (between $A$ and $B$) of the sum of the complete height of the subtree plus the length of the edge pointing to the subtree.
+\end{itemize}
+
+\subsection*{Pseudocode}
+The psuedocode shows the function $\mathit{zeroSkew}$ whose input is the node $T$ (root of the tree). We denote the child nodes of $T$ with $A$ and $B$. $l_{T, A}$ is the length of the edge between $T$ and its child node $A$. We consider a node with only one child node to be zero skew. Such a child node must be a leaf, because the binary tree is complete.
+
+\begin{algorithmic}
+	\If{$\mbox{$T$ has no children}$}
+
+		\Return $0$
+	\ElsIf{$\mbox{$T$ has only one child $A$}$}
+		
+		\Return $\mathit{zeroSkew}(A) + l_{T_A}$
+	\EndIf
+
+	\State $h_A \gets \mathit{zeroSkew}(A)$
+	\State $h_B \gets \mathit{zeroSkew}(B)$
+
+	\State $\mathit{diff} \gets h_A + l_{T, A} - h_B - l_{T, B}$
+
+	\If{$\mathit{diff} < 0$}
+		% Increase A
+		\State $l_{T, A} \gets l_{T, A} - \mathit{diff}$
+	\ElsIf{$\mathit{diff} > 0$}
+		\State $l_{T, B} \gets l_{T, B} + \mathit{diff}$
+	\EndIf
+
+	\Return $h_A + l_{T, A}$
+\end{algorithmic}
+
+\subsection*{Proof}
+We prove the correctness of the algorithm by induction. We prove that after running $\mathit{zeroSkew}(T)$, the tree $T$ has zero skew.
+
+\begin{itemize}
+	\item We notice, that for a tree $T$ to have zero skew, both of its subtrees $A$ and $B$ must have zero skew, because the lengths of the edges above $T$ affect the lengths of the paths to the leaves of both $A$ and $B$ in the same way.
+	\item \textbf{Base Case:} If $T$ is a leaf, i.e. it does not have any child nodes, the skew of $T$ is zero. The length of the complete tree $T$ is zero.
+	\item \textbf{Induction Hypothesis:} Assume that $\mathit{zeroSkew}$ reduces  the skew to zero for trees $A$ and $B$ and returns the length of the complete tree $A$ or $B$ respectively.
+	\item \textbf{Induction Step:} We prove that $\mathit{zeroSkew}(T)$ reduces $T$'s skew to zero and returns $T$'s complete lengths, where $A$ and $B$ are children of $T$. We know that $A$ and $B$ have zero skew and we know their complete length $h_A$ and $h_B$. $\mathit{diff}$ is the difference between the complete length plus the length of the connection edge of $A$ and $B$. $T$ has zero skew, iff $\mathit{diff} = 0$. By increasing the length of the connecting edge of the smaller subtree by the absolute value of $\mathit{diff}$, $h_A + l_{T, A}$ and $h_B + l_{T, B}$ become equal. Therefore, $T$ has now zero skew. Also, notice that there is no better way (that involves adding a smaller number) of reducing $T$'s skew to zero, since we are not allowed to reduce the length of an edge.
+	\item The resulting tree has a minimal complete length, i.e. there is no other way of changing the lengths such that $T$ has zero skew, since we are only allowed to increase the length of a node and because every subtree must have zero skew. Therefore, the best way to reduce the skew to zero is to work bottom up and to always increase the length of at most one of $T$'s subtrees.
+\end{itemize}
+
+\subsection*{Runtime}
+We used divide and conquer to divide the problem of reducing $T$'s skew to zero into subproblems for each of the subtrees. Therefore, we created two subproblems and each subproblem can be solved in constant time, since we only compare two numbers amd add four numbers. In other words, we did a constant amount of computation for every node. Therefore, the runtime for the algorithm in $\mathcal{O}(n)$, where $n$ is the number of nodes in the tree.
+
+\section*{Problem 4}
+\subsection*{Basic Idea}
+\begin{itemize}
+	\item For all functions $f_e(x)$, generate a list of all pairwise intersection points $x_i$, resulting in a list of intervals when we sort the intersection points by x-values.
+	\item For every interval $(x_i, x_{i+1})$, calculate the minimum spannning tree (Kruskal's algorithm or Prim's algorithm) for $x= \frac{x_i + x_{i+1}}{2}$, resulting in a list of edges $E_{i,i+1}$ for every interval. We denote this by the tupel $(x_i, x_{i+1}, E_{i, i+1})$.
+	\item For every tupel $(x_i x_{i+1}, E_{i, i+1})$, calculate the minimum $m_{E_{i, i+1}}$ of the function $S_{E_{i, i+1}}(x) = \sum_{f \in E_{i, i+1}} f(x)$by calculating its first derivation.
+	\item Output the smallest of all $m_{E_{i, i+1}}$.
+\end{itemize} 
+
+\subsection*{Pseudocode}
+The algorithm receives a graph $G=(V,E)$ and a list of quadratic functions $f_e(t)$ for every $e \in E$ as an input.
+
+\begin{algorithmic}
+	\State $X \gets \mbox{ new Set}$
+	\ForAll{$a \in E$}
+		\ForAll{$b \in E$}
+			\State $X.\mbox{add}(\mathit{intersection}(a, b))$
+		\EndFor
+	\EndFor
+	
+	\State $\mbox{sort}(X)$
+	\State $X.\mbox{add}(X.\mbox{first} - 10)$
+	\State $X.\mbox{add}(X.\mbox{last} + 10)$
+
+	\State $m_{\mathit{best}} \gets \infty$	
+	\ForAll{$\mbox{consequitive pairs $(x_i, x_{i+1}) \in X$}$}
+		\State $H \gets \mathit{MST}(\frac{x_i + x_{i+1}}{2})$
+		\State $M \gets \sum_{f \in H} f(x)$
+		\State $M' \gets \frac{\partial M}{\partial x}$
+		\State $m \gets x \mbox{ where } M'(x) = 0$
+		
+		\If{$M(m) < m_{best}$}
+			\State $m_{best} \gets M(m)$
+			\State $x_{best} \gets m$
+		\EndIf
+	\EndFor
+
+	\Return $x_{best}$
+\end{algorithmic}
+
+\subsection*{Proof}
+\begin{itemize}
+	\item Kruskal's algorithm and Prim's algorithm do not care about the exact values of the edges when they generate the minimum spanning tree. What matters is the relation of the edges to each other, e.g. if the weight of an edge is bigger than another one.
+	\item When two functions $f_e(x)$ intersect, the weight of one edge gets bigger than the weight of the other edge. Therefore, when we take a look at values of $x$, Kruskal's/Prims's algorithm only decides to use a different set of edges when we cross an intersection point of two edge function.
+	\item We generate a MST for every interval, i.e. for every possible combination of edge function relations. We only do this for retrieving the set of edges that are used for this interval. We can be sure that the minimum value of $x$ is in one of the intervals, since they cover all numbers from $-\infty$ to $\infty$.
+	\item For every interval, we find the extreme point of the sum of all functions of the chosen edges. Since all edge functions are quadratic functions, the sum of a set of edge functions is also a quadratic function. We can be sure that the optimum is always a minimum, because $a > 0$. One of the minimums must yield the smallest MST, because the set of edges is fixed in every interval.
+	\item Note: the first and the last interval are open intervals, i.e. they have no boundary towards $-\infty$ and $\infty$. We added the intersection points $X.\mbox{first} - 10$ and $X.\mbox{last} + 10$ to have intervals for these edge cases. Note, that even these outer intervals have a minimum, i.e. the minimum can not be at $-\infty$ or $\infty$, because $a>0$.
+\end{itemize}
+
+\subsection*{Runtime}
+\begin{itemize}
+	\item Generating all intersection points: $\mathcal{O}(|E|^2)$, resulting in $\mathcal{O}(|E|^2)$ intersection points and intervals.
+	\item Sorting the intersection points: $\mathcal{O}(|E|^2 \log |E|^2)$.
+	\item Generating the minimal spanning tree with Kruskal's algorithm: $\mathcal{O}(|E| \log |E|)$\footnote{Source: Wikipedia}. Generating the MST for all intervals requires $\mathcal{O}(|E|^3 \log |E|)$ time.
+	\item Generating the sum of all selected edges, generating its derivative and finding its minimum takes $\mathcal{O}(|E|)$ time, because $|E|$ is the maximal number of functions that are summed up. For all intervals, this takes $\mathcal{O}(|E|^2)$ time.
+	\item The overall runtime of the algorithm is bounded by $\mathcal{O}(|E|^4)$, i.e. it is polynomial in the the number of edges.
+\end{itemize}
+
+\section*{Problem 5}
+\subsection*{Basic Idea}
+\begin{itemize}
+	\item We define the function $\mathit{splittable}(i, p_x, p_y)$ that determines whether the substring of $s$ beginning at index $i$ is splittable, assuming that we already saw the prefixes $p_x$ of $x$ and $p_y$ of $y$.
+	\item $\mathit{splittable} = \mathit{true} \Leftrightarrow \mathit{splittable}(i+1, \mathit{pre}(x, p_x \circ s_i), p_y) \vee \mathit{splittable}(i+1, p_x, \mathit{pre}(y, p_y \circ s_i))$, with $\mathit{pre}(a, p_a) = \epsilon \mbox{ \textbf{if} } a = p_a \mbox{\textbf{ else }} p_a$\footnote{$\mathit{pre}(a, p_a)$ returns $\epsilon$ if the prefix $p_a$ is the whole word $a$.} and $\circ$ is the concatenation of strings.
+	\item We fill the table for $\mathit{splittable}$ using dynamic programming, beginning with the maximum value of $i$ (from the back of the sequence). The base cases are $\mathit{splittable}(n+1, p_x, p_y) = \mathit{true}$, for all prefixes $p_x$ of $x$ and all prefixes $p_y$ of $y$ and where $n = |s|$.
+	\item We extract the solution to the problem (whether the string is splittable or not, an exact splitting is not requested) at $\mathit{splittable}(1, \epsilon, \epsilon)$.
+\end{itemize}
+
+\subsection*{Pseudocode}
+\begin{algorithmic}
+	\State $\mathit{splittable}(n+1, p_x, p_y) \gets \mathit{true} \mbox{  } \forall p_x \in \mbox{prefixes}(x) \forall p_y \in \mbox{prefixes}(y)$
+
+	\For{$i \gets n \mbox{\textbf{ downto }} 1$}
+		\ForAll{$p_x \in \mbox{prefixes}(X)$}
+			\ForAll{$p_y \in \mbox{prefixes}(Y)$}
+				\State $\mathit{isSplittable} \gets \mathit{false}$
+
+				\If{$p_x \circ s_i \in \mbox{prefixes}(x) \wedge \mathit{splittable}(i+1, \mathit{pre}(x, p_x \circ s_i), p_y)$}
+					\State $\mathit{isSplittable} \gets \mathit{true}$
+				\EndIf
+
+				\If{$p_y \circ s_i \in \mbox{prefixes}(y) \wedge \mathit{splittable}(i+1, p_x, \mathit{pre}(y, p_y \circ s_i))$}
+					\State $\mathit{isSplittable} \gets \mathit{true}$
+				\EndIf
+			\EndFor
+		\EndFor
+	\EndFor
+
+	\Return $\mathit{splittable}(1, \epsilon, \epsilon)$
+\end{algorithmic}
+
+\subsection*{Proof}
+We proove by induction that $\mathit{splittable}(i, p_x, p_y)$ contains \mbox{true} iff the substring beginning at $i$ is splittable, given that $\mathit{splittable}(i+1, \ldots, \ldots)$ contain the correct value.
+
+\begin{itemize}
+	\item \emph{Base Case:} For $i = n+1$, the substring is empty. An empty substring is always splittable regardless of the already seen prefixes, because a sequence of $x$ or $y$ does not necessarily have to be completed. Therefore, for all valid prefixes of $x$ and $y$, an empty string is considered splittable.
+	\item \emph{Induction Hypothesis:} Let us assume that we know whether a substring beginning at index $i+1$ is splittable, for all possbile combinations of valid prefixes of $x$ and $y$.
+	\item \emph{Induction Step:} Let us assume that the current prefix of $x$, i.e. the characters of $x$ that we already saw, is $p_x$ and that the current prefix of $y$ is $p_y$. Now we consider two cases. \begin{itemize}
+		\item $p_x \circ s_i$ is a prefix of $x$ or equals $x$, and $\mathit{splittable}(i+1, \mathit{pre}(x, p_x \circ s_i), p_y) = \mathit{true}$. In that case, we know that the current sequence of $x$, that we read so far, can be continued by reading the next character from the sequence string $s_i$. We also know, that the rest of the sequence string is splittable, considering the new prefix $\mathit{pre}(x, p_x \circ s_i)$ and the unchanged prefix $p_y$. Therefore, the string beginning at index $i$ is splittable with the current prefixes $p_x$ and $p_y$.
+	\item The same argument can be made for $y$ and $p_y$, meaning that the sequence of currently read $y$s can be continued by reading the character $s_i$ and the rest of the sequence string is also splittable with the new prefixes.
+	\item Note, that the previous cases can both apply at the same time.
+	\item Otherwise, the substring beginning at index $i$ is not splittable with the current prefixes $p_x$ and $p_y$. In case, neither $p_x \circ s_i$ nor $p_y \circ s_i$ are prefixes of $x$ or $y$ respectively, the character $s_i$ can neither contribute to the sequence of already read $x$s (represented by $p_x$) nor to the sequence of already read $y$s. In case, $p_x \circ s_i$ or $p_y \circ s_i$ is a valid prefix but $\mathit{splittable}(i+1, \mathit{pre}(x,p_x \circ s_i), p_y) = \mathit{false}$ or $\mathit{splittable}(i+1, p_x, \mathit{pre}(y, p_y \circ s_i)) = \mathit{false}$ respecively, the current character could continue the list of already read $x$/$y$, but then the rest of the string is not splittable anymore, i.e. at some point, we will encounter a character that can neither continue the list of already read $x$ nor the list of already read $y$. Therefore, the substring beginning at index $i$ is not splittable with the current prefixes $p_x$ and $p_y$.
+	\end{itemize}
+\end{itemize}
+
+\subsection*{Runtime}
+\begin{itemize}
+	\item We have $|x| \cdot |y|$ base cases at $n+1$, for all possible combinations of prefixes of $x$ and $y$. Filling the table with $\mathit{true}$ for all base cases takes $\mathcal{O}(|x| \cdot |y|)$ time.
+	\item The rest of the table consists of $n \cdot |x| \cdot |y|$ cells. We iterate over these cells in a specific sequence, resulting in $\mathcal{O}(n \cdot |x| \cdot |y|)$ steps.
+	\item The checks inside the innermost loops take constant time for evaluting the table at two different positions. Checking, if the $p_x \circ s_i$ or $p_y \circ s_i$ are prefixes of $x$ or $y$ can also be done in constant time, because know already that $p_x$ and $p_y$ are prefixes of $x$ and $y$. Therefore, we only have to compare the new character $s_i$.
+	\item The overall runtime complexity of the algorithm is $\mathcal{O}((n+1) \cdot |x| \cdot |y|)$.
+\end{itemize}
+
+\section*{Problem 6}
+\subsection*{Subproblem a}
+\subsubsection*{Basic Idea}
+\begin{itemize}
+	\item Generate the graph $G_\cap = (V, E_\cap)$ with $E_\cap = \bigcap_{G \in \{G_0, G_1, \ldots, G_b\}} G.E$.
+	\item Find the shortest path from $s$ to $t$ in $G_\cap$ with breadth-first search or another shortest path algorithm, e.g. Dijkstra.
+\end{itemize}
+
+\subsubsection*{Pseudocode}
+In the pesudocode, we denote the set of edges at time $i$ with $E_i$. The function $BFS$ runs the breadth-first search and outputs the shortest path between two vertices.
+
+\begin{algorithmic}
+	\State $E_\cap \gets \bigcap_{E \in \{E_0, E_1, \ldots, E_b\}} E$
+	
+	\Return $\mathit{BFS}(V, E_\cap, s, t)$
+\end{algorithmic}
+
+\subsubsection*{Proof}
+All paths from $s$ to $t$ that exists in all graphs $G_i$, must also exist in the intersection of all graphs $G_i$ (resulting in a new graph), and all paths from $s$ to $t$ in the intersection of all $G_i$ exist in every single graph $G_i$. Therefore, the shortest path from $s$ to $t$ that exists in all graphs $G_i$ is the shortest path from $s$ to $t$ in the intersection graph of all $G_i$.
+
+Since all edge weights are the same, i.e. the length is defined as the number of edges, breadth-first search can be used to find the shortest path from $s$ to $t$.
+
+\subsubsection*{Runtime}
+\begin{itemize}
+	\item Generating the intersection of all $G_i$ can be done by checking if every possible edge between to vertices in $V$ is present in every graph $G_i$. Since we have to check $\mathcal{O}(|V|^2)$ edges with this approach, the runtime for this step is $\mathcal{O}(b \cdot |V|^2)$. Note, that the set of vertices stays the same.
+	\item BFS can be done in $\mathcal{O}(|V| + |E|)$. In the worst case, considering a full graph, the runtime is therefore $\mathcal{O}(|V|^2)$.
+	\item The overall runtime complexity of the algorithm is $\mathcal{O}((b+1) \dot |V|^2)$.
+\end{itemize}
+
+\subsection*{Subproblem b}
+\subsubsection*{Basic Idea}
+\begin{itemize}
+	\item Solve with dynamic programming.
+	\item Let $j$ be the time when the path selected so far changes, $\mathit{cost}(i) = \mathit{cost}(P_0, \ldots,  P_i)$, and $\mathit{shortest}(a, b)$ be the shortest path in the intersection of all $G_i$ with $a \leq i \leq b$. Then, $\mathit{cost}(i) = \min \{ \min_{0 < j < i} (\mathit{cost}(j) + (i-j) \cdot l(\mathit{shortest}(j+1, i) + K)), (i+1) \cdot l(\mathit{shortest}(0, i)) \}$.
+	\item In the first case of the $\min$ function, we take a look at every possibility to select a new path among the graphs $G_1$ up to $G_{i-1}$\footnote{For $G_i$, we cannote decide to take a new path from there on, because there are no more graphs after $G_i$.}. In that case, we take the same path for all graphs $G_{j+1}$ up to $G_i$ and solve the problem for the previous graphs recursively (that's where dynamic programming comes in). For $G_{j+1}$ to $G_i$ we select the shortest path that is shared with all these graphs (subproblem a) and add the cost $K$.
+	\item In the second case of the $\min$ function, we choose not to change the current path at all. Therefore, we select the minimum path that is shared with all graphs $G_0$ up to $G_i$ (subproblem a).
+\end{itemize}
+
+\subsubsection*{Pseudocode}
+Note, that there are two different $\mathit{cost}$ arrays in the pesudo code. One is one-dimensional, the other one is two-dimensional.
+
+\begin{algorithmic}
+	\ForAll{$i \gets 0 \mbox{\textbf{ to }} b$}
+		\ForAll{$j \gets i \mbox{\textbf{ to }} b$}
+			\State $\mathit{shortest}[i, j] \gets \mbox{algorithm from subproblem a}(G_i, \ldots, G_j)$
+			\State $\mathit{cost}[i, j] \gets l(\mathit{shortest}[i, j])$
+		\EndFor
+	\EndFor
+
+	\State $\mathit{cost}[0] \gets l(\mbox{shortest path in $G_0$})$
+	\State $\mathit{change}[0] \gets -1$
+
+	\For{$i \gets 1 \mbox{\textbf{ to }} b$}
+		\State $\mathit{cost}_c \gets \min_{0 < j < i} (\mathit{cost}[j] + K + \mathit{cost}[j+1, i] \cdot (i-j))$
+		\State $\mathit{time}_c \gets \argmin_{0 < j < i} (\mathit{cost}[j] + K + \mathit{cost}[j+1, i] \cdot (i-j))$
+		\State $\mathit{cost}_n \gets (i+1) \cdot \mathit{cost}[0, i]$
+
+		\If{$\mathit{cost}_c < \mathit{cost}_n$}
+			\State $\mathit{cost}[i] \gets \mathit{cost}_c$
+			\State $\mathit{change}[i] \gets \mathit{time}_c$
+		\Else
+			\State $\mathit{cost}[i] \gets \mathit{cost}_n$
+			\State $\mathit{change}[i] \gets -1$
+		\EndIf
+	\EndFor
+
+	\State $P \gets \mbox{new List}$
+	\State $i \gets b$
+	\While{$i \not= -1$}
+		\State $\mathit{nextChange} \gets \mbox{change}[i]$
+		\For{$j \gets \mathit{nextChange} + 1 \mbox{\textbf{ to }} i$}
+			\State $P.\mbox{add}(\mathit{shortest}[\mathit{nextChange} + 1, i])$
+		\EndFor
+
+		\State $i \gets \mathit{nextChange}$
+	\EndWhile
+
+	\Return $P.\mbox{reversed}()$
+\end{algorithmic}
+
+\subsubsection*{Proof}
+We prove by induction that the correct value for $\mathit{cost}[i]$ is generated, given that all $\mathit{cost}[j]$ with $j < i$ are correct.
+
+\begin{itemize}
+	\item \textbf{Induction Base:} For $i=0$, we have only one graph $G_0$. Therefore, the sequence of paths that minimize the formula is the minimum path in $G_0$.
+	\item \textbf{Induction Hypothesis:} Assume, that for an arbitrary but fixed $n$, all $\mathit{cost}[i]$ with $i \leq n$ are correct.
+	\item \textbf{Induction Step:} We show that $\mathit{cost}[n+1]$ is calculated correctly. There are two cases that we have to discuss. \begin{itemize}
+		\item $\mathit{cost}_c < \mathit{cost}_n$: In that case, it is better to change the path after $G_j$  between $G_1$ and $G_n$. We take a look at every possible time value $j$ and try to change the path directly after this point. The total cost for such a change is $\mathit{cost}(p) + K + (n+1-j) \cdot \mathit{cost}(j+1,n+1)$, i.e. the cost for the subproblem (that is smaller than $n-1$ and therefore correctly solved according to the induction hypothesis) plus the cost for the change plus the cost for the new path for all remaining $G_{j+1}$ to $G_{n+1}$. For these remaining graphs, the minimal path from $s$ to $t$ minimize the costs. We take change the path at the minimum value of $j$, if the total costs are smaller than not changing the path at all. The costs for not changing the path at all is the length of the shortest path in the intersection of all graphs, multiplied by the number of graphs.
+	\item $\mathit{cost}_n < \mathit{cost}_c$: In that case, it is better not to change the path at all, since the costs for that option are smaller than the costs for changing the path at any time $j$ (for an explanation, see previous case).
+	\item $\mathit{cost}_n = \mathit{cost}_c$: In that case, it does not matter, which option we choose, since they result in the same total cost. In the pseudocode, we always choose not to change the path at all. 
+	\end{itemize}
+\end{itemize}
+
+The last part of the algorithm reconstructs the path. Whenever the algorithm decides to change the path or not to change the path at all, $\mathit{change}[i]$ contains this decision for time/graph $i$. In case, the algorithm decides to change the path, $\mathit{change}[i]$ is the index of the first graph (counting starts from $n$) with a different path. Since this value is based on the decision that we proved correct in the induction proof, we can assume that the values for $\mathit{change}$ are correct. We can reconstruct the paths by getting the shortest paths for every interval from the two-dimensional $\mathit{costs}$ array containing the shortest paths for all pairs of graphs.
+
+\subsection*{Runtime}
+\begin{itemize}
+	\item Filling $\mathit{costs}$ with the shortest paths: We have to run the algorithm from subproblem a for every pair of graphs. This takes $\mathcal{O}(b^3 \cdot |V|^2)$ time\footnote{The value $b$ in the runtime complexity formula for subproblem a is smaller or equal to the value of $b$ in this problem.}.
+	\item Filling the $\mathit{cost}$ array with the path change points: for each number of graphs $i=1 \ldots b$, we have to take a look at the array values $\mathit{cost}[k]$ of all smaller $k < i$. We assume that comparing and evaluating the cost formula takes constant time. Therefore, the runtime for this step is $\mathcal{O}(b^2)$.
+	\item For extracting the solution, we have to take a look at at most $b$ entries of the $\mathit{change}$ array, in case the path changes with every graph. Therefore, the runtime complexity for this step is $\mathcal{O}(b)$.
+	\item The overall runtime complexity for the algorithm is $\mathcal{O}(b^3 \cdot |V|^2)$.
+\end{itemize}
+
+\section*{Problem 7}
+\subsection*{Basic Idea}
+\begin{itemize}
+	\item Solve with dynamic programming.
+	\item For a duration of $i$ days and an amount of stock $r$, we calculate the overall profit $\mathit{profit}(i, r) = \max_{0 \leq a \leq r} (\mathit{profit}(i-1, r-a) + a \cdot (p_i -f(a) - \mathit{accumulatedF}(i-1, r-a)))$ with the base cases $\mathit{profit}(1,i) = i \cdot (p_1 - f(r))$ for every $i \in 0 \ldots r$  where $r$ is the maximum amount of stock that we are considering in this problem. Note, that $a$ is the amount stock that we sell in the last day.
+	\item In addition, we maintain the accumulated sums of $f(a)$ for every value in $\mathit{profit}$ with $\mathit{accumulatedF}(i, r) = \mathit{accumulatedF}(i-1, r-a) + f(a)$, where $a$ is the minimum argument in the formula of $\mathit{profit}$.
+\end{itemize}
+
+\subsection*{Pseudocode}
+In the algorithm, $a_\mathit{max}[i, r]$ is the amount of stock that we sell at a given date $i$, given that we have $r$. We need this array to reconstruct the solution in the second part of the algorithm.
+
+\begin{algorithmic}
+	\State $a_\mathit{max}[1, i] \gets i \mbox{   } \forall i \in 0 \ldots r$
+	\State $\mathit{profit}[1, i] \gets i \cdot (p_1 - f(i)) \mbox{   } \forall i \in 0 \ldots r$
+	\State $\mathit{accumulatedF}[1, i] = f(i) \mbox{   } \forall i \in 0 \ldots r$
+
+	\ForAll{$i \gets 2 \mbox{\textbf{ to }} n$}
+		\ForAll{$p \gets 0 \mbox{\textbf{ to }} r$}
+			\State $a_{\mathit{max}}[i, p] \gets \mbox{argmax}_{0 \leq a \leq r} (\mathit{profit}[i-1, p-a] + a \cdot (p_i - f(a) - \mathit{accumulatedF}[i-1, p-a]))$
+			\State $\mathit{profit}[i, p] \gets \mathit{profit}[i-1, r-a_{\mathit{max}}[i, p]] + a_\mathit{max}[i,p] \cdot (p_i - f(a_\mathit{max}[i,p]) - \mathit{accumulatedF}[i-1, p-a_\mathit{max}[i,p]])$
+			\State $\mathit{accumulatedF}[i, p] \gets \mathit{accumulatedF}[i-1, p-a_\mathit{max}[i,p]] + f(a_\mathit{max}[i,p])$
+		\EndFor
+	\EndFor
+
+	\State $\mathit{remaining} \gets r$
+	\For{$i \gets n \mbox{\textbf{ downto }} 1$}
+		\State $y_i \gets a_\mathit{max}[i, \mathit{remaining}]$
+		\State $\mathit{remaining} \gets \mathit{remaining} - y_i$
+	\EndFor
+\end{algorithmic}
+
+\subsection*{Proof}
+We prove by induction that $\mathit{profit}[i, p]$ contains the maximum achievable profit for a duration of $i$ days and an amount $p$ of stock, given that $\mathit{profit}(i', p')$ is correct for all $1 \leq i' < i$ and all $0 \leq p' \leq p$.
+\begin{itemize}
+	\item asd	
+\end{itemize}
+
+\end{document}
+
